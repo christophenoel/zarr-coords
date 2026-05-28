@@ -9,7 +9,7 @@
         "spec_url": "https://github.com/zarr-conventions/coords/blob/v1/README.md",
         "uuid": "6ca4454a-658a-4348-a667-b39ced0e58cb",
         "name": "coords",
-        "description": "Generic mapping between Zarr array index space and coordinate space — declares dimensions, locates coordinate descriptors, and composes with the spatial convention for affine transforms or CF-style explicit arrays for non-spatial dimensions."
+        "description": "Domain-agnostic mapping between Zarr array index space and coordinate space."
       }
     ],
     "coords:coordinates": {

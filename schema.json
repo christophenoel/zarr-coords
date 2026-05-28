@@ -59,7 +59,7 @@
         },
         "description": {
           "type": "string",
-          "const": "Generic mapping between Zarr array index space and coordinate space — declares dimensions, locates coordinate descriptors, and composes with the spatial convention for affine transforms or CF-style explicit arrays for non-spatial dimensions.",
+          "const": "Domain-agnostic mapping between Zarr array index space and coordinate space.",
           "description": "Brief description of the convention's purpose and usage"
         }
       },

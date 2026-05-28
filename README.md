@@ -10,27 +10,36 @@
 
 ## Description
 
-Generic mapping between Zarr array index space and coordinate space — declares
-dimensions, locates coordinate descriptors, and composes with the `spatial`
-convention for affine transforms or CF-style explicit arrays for non-spatial
-dimensions.
+Domain-agnostic mapping between Zarr array index space and coordinate space.
 
-This convention provides a single, generic mechanism to associate each
-**dimension** of a Zarr array (or tuple of dimensions, for curvilinear
-coordinates) with a **coordinate descriptor** that says *how* the
-coordinate values are represented and *where* they live.
+This convention associates each **dimension** of a Zarr array (or tuple of
+dimensions, for multi-dimensional coordinates) with a **coordinate
+descriptor** that says *how* the coordinate values are represented and
+*where* they live. It treats every coordinate kind uniformly — temporal,
+vertical, spectral, categorical, spatial, or domain-specific — and applies
+equally to regular, irregular, and curvilinear axes.
 
 It deliberately does not invent a new coordinate model. Instead it offers a
-small set of descriptor shapes that cover the dominant ecosystems:
+small set of descriptor shapes:
 
-- **Explicit coordinate arrays** (the NetCDF / CF / Xarray model: `lat(lat)`,
-  `time(time)`, curvilinear `lat(y, x)`, …).
-- **Affine spatial transforms** (the GeoTIFF / GDAL model, as already
-  captured by the [`spatial`](https://github.com/zarr-conventions/zarr-spatial)
-  convention).
-- **References to future conventions** for temporal, vertical, spectral,
-  lookup-based, or other domain-specific coordinate types — without
-  enlarging this spec.
+- **Explicit coordinate arrays** — a sibling Zarr array holds the per-index
+  values for the dimension (the NetCDF / Xarray model). 1-D for regular
+  axes such as `time(time)`, `level(level)`, or `band(band)`; N-D where
+  coordinates depend on more than one index dimension.
+- **Inline coordinate values** — short value vectors embedded directly in
+  the metadata (for example, a 4-band spectral axis where allocating a
+  separate array would be wasteful).
+- **Delegation via composition** — for coordinate kinds that have their
+  own Zarr convention, the descriptor delegates to it via a generic
+  `reference` descriptor instead of carrying the values. Future conventions
+  for temporal calendars, vertical levels, spectral bands, lookup tables,
+  or other domains plug in this way.
+- **Geospatial use** — spatial coordinates follow one of two traditions:
+  explicit `lat` / `lon` (or projected `x` / `y`) arrays — the NetCDF / CF
+  model, sometimes paired with `grid_mapping` — use the `array` descriptor
+  above; an affine geotransform on a regular grid — the GeoTIFF / GDAL
+  model — uses an `affine` descriptor that delegates to the
+  [`spatial`](https://github.com/zarr-conventions/zarr-spatial) convention.
 
 All properties use the `coords:` namespace prefix and are placed at the root
 `attributes` level following the [Zarr Conventions Specification](https://github.com/zarr-conventions/zarr-conventions-spec).
@@ -40,14 +49,14 @@ All properties use the `coords:` namespace prefix and are placed at the root
 - Provides a uniform way to declare *what each axis of a Zarr array means*
   and *where its coordinate values come from*, regardless of whether the
   axis is spatial, temporal, spectral, or domain-specific.
-- Bridges two ecosystems:
-  - **NetCDF/CF/Xarray** — coordinates as explicit arrays, with dimension
-    names carried by the Zarr v3 `dimension_names` array field. CF-style
-    semantic metadata (`standard_name`, `units`, `axis`, `grid_mapping`)
+- In the geospatial domain, bridges two ecosystems for spatial coordinates:
+  - **NetCDF / CF / Xarray** — explicit `lat` / `lon` (or projected
+    `x` / `y`) arrays, often paired with the CF `grid_mapping` attribute.
+    CF semantic metadata (`standard_name`, `units`, `axis`, `grid_mapping`)
     is out of scope here and may be formalized by a future `cf:`
     convention.
-  - **GeoTIFF/GDAL/GeoZarr** — coordinates as affine transforms, expressed
-    by the [`spatial`](https://github.com/zarr-conventions/zarr-spatial)
+  - **GeoTIFF / GDAL / GeoZarr** — affine geotransform expressed by the
+    [`spatial`](https://github.com/zarr-conventions/zarr-spatial)
     convention.
 - Composable with [`spatial`](https://github.com/zarr-conventions/zarr-spatial)
   (affine georeferencing),
@@ -59,10 +68,13 @@ All properties use the `coords:` namespace prefix and are placed at the root
 
 ### Composes with
 
-- **[`spatial`](https://github.com/zarr-conventions/zarr-spatial)** — when an
-  axis is governed by an affine transform, declare it with
-  `{type: "affine", convention: "spatial"}` and let the existing
-  `spatial:transform` attribute carry the matrix.
+- **[`spatial`](https://github.com/zarr-conventions/zarr-spatial)** — when a
+  spatial axis is represented by an affine geotransform (the GeoTIFF / GDAL
+  model), declare it with `{type: "affine", convention: "spatial"}` and let
+  the existing `spatial:transform` attribute carry the matrix. Spatial axes
+  represented as explicit `lat` / `lon` (or projected-`x` / projected-`y`)
+  arrays — the NetCDF / CF model, sometimes paired with `grid_mapping` —
+  use the `array` descriptor instead.
 - **[`proj`](https://github.com/zarr-conventions/zarr-proj)** — provides the
   CRS for spatial axes; orthogonal to `coords:`, applied on the same node.
 - **[`multiscales`](https://github.com/zarr-conventions/multiscales)** —
@@ -84,7 +96,7 @@ The convention must be registered in `zarr_conventions`:
       "spec_url": "https://github.com/zarr-conventions/coords/blob/v1/README.md",
       "uuid": "6ca4454a-658a-4348-a667-b39ced0e58cb",
       "name": "coords",
-      "description": "Generic mapping between Zarr array index space and coordinate space — declares dimensions, locates coordinate descriptors, and composes with the spatial convention for affine transforms or CF-style explicit arrays for non-spatial dimensions."
+      "description": "Domain-agnostic mapping between Zarr array index space and coordinate space."
     }
   ]
 }
@@ -191,10 +203,14 @@ scope](#coordinate-semantics-are-out-of-scope).
 }
 ```
 
-Indicates that the coordinate is derived from the `spatial:transform`
-affine matrix declared on the same node (or an ancestor group). Use this
-when georeferencing is already expressed via the `spatial` convention and
-you only need to map a generic dimension name to it.
+Indicates that the spatial coordinate is derived from the
+`spatial:transform` affine matrix declared on the same node (or an
+ancestor group) — the GeoTIFF / GDAL representation of spatial coordinates.
+Use this when georeferencing is already expressed via the
+[`spatial`](https://github.com/zarr-conventions/zarr-spatial) convention
+and you only need to map a generic dimension name to it. For the NetCDF /
+CF tradition (explicit `lat` / `lon` or projected `x` / `y` arrays, often
+with a CF `grid_mapping` attribute), use the `array` descriptor instead.
 
 ### `type: "reference"` — delegate to another convention
 
@@ -266,14 +282,26 @@ part of `coords:`.
 
 ## Relationship with the `spatial` convention
 
+Spatial coordinates have two well-established representations in the wider
+ecosystem:
+
+- **GeoTIFF / GDAL** — an affine geotransform on a regular grid (origin +
+  cell size + CRS hook). This is what the
+  [`spatial`](https://github.com/zarr-conventions/zarr-spatial) convention
+  captures, and what an `affine` descriptor in `coords:coordinates`
+  delegates to.
+- **NetCDF / CF / Xarray** — explicit `lat` / `lon` (or projected `x` /
+  `y`) coordinate arrays, often paired with a CF `grid_mapping` attribute.
+  In this spec these are just regular explicit coordinate arrays, declared
+  via the `array` descriptor.
+
 This convention is intentionally **broader** than `spatial`:
 
 - [`spatial`](https://github.com/zarr-conventions/zarr-spatial) describes
-  affine georeferencing (origin + cell size + CRS hook) for the spatial
-  dimensions of a grid.
-- `coords:` describes *any* dimension — spatial, temporal, vertical,
-  spectral, or domain-specific — and how to find its coordinate
-  representation.
+  the GeoTIFF / GDAL affine model for the spatial dimensions of a grid.
+- `coords:` describes *any* dimension — temporal, vertical, spectral,
+  categorical, spatial, or domain-specific — and how to find its
+  coordinate representation, including both spatial representations above.
 
 The two compose cleanly:
 
