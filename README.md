@@ -20,14 +20,15 @@ This convention provides a single, generic mechanism to associate each
 coordinates) with a **coordinate descriptor** that says *how* the
 coordinate values are represented and *where* they live.
 
-Dimension *names* are **not** redeclared by this convention — they are
-taken from the Zarr-native field that already carries them:
+This specification is written against **Zarr v3**. Dimension *names* are
+**not** redeclared by this convention — they are taken from the Zarr v3
+array's `dimension_names` field (top-level array metadata, sibling of
+`zarr_format` and `node_type`). `coords:coordinates` keys MUST match those
+existing names.
 
-- **Zarr v3**: the array's `dimension_names` field (top-level array
-  metadata, sibling of `zarr_format` and `node_type`).
-- **Zarr v2 / Xarray**: the `_ARRAY_DIMENSIONS` attribute.
-
-`coords:coordinates` keys MUST match those existing names.
+Zarr v2 datasets can use this convention with a small adaptation — see
+[Zarr v2 compatibility](#zarr-v2-compatibility) at the end of this
+document.
 
 It deliberately does not invent a new coordinate model. Instead it offers a
 small set of descriptor shapes that cover the dominant ecosystems:
@@ -50,10 +51,11 @@ All properties use the `coords:` namespace prefix and are placed at the root
   and *where its coordinate values come from*, regardless of whether the
   axis is spatial, temporal, spectral, or domain-specific.
 - Bridges two ecosystems:
-  - **NetCDF/CF/Xarray** — coordinates as explicit arrays, dimension names
-    via `dimension_names` (Zarr v3) or `_ARRAY_DIMENSIONS` (Zarr v2, Xarray
-    convention), CF metadata (`standard_name`, `units`, `axis`,
-    `grid_mapping`).
+  - **NetCDF/CF/Xarray** — coordinates as explicit arrays, with dimension
+    names carried by the Zarr v3 `dimension_names` array field. CF-style
+    semantic metadata (`standard_name`, `units`, `axis`, `grid_mapping`)
+    is out of scope here and may be formalized by a future `cf:`
+    convention.
   - **GeoTIFF/GDAL/GeoZarr** — coordinates as affine transforms, expressed
     by the [`spatial`](https://github.com/zarr-conventions/zarr-spatial)
     convention.
@@ -75,9 +77,9 @@ All properties use the `coords:` namespace prefix and are placed at the root
   CRS for spatial axes; orthogonal to `coords:`, applied on the same node.
 - **[`multiscales`](https://github.com/zarr-conventions/multiscales)** —
   domain-agnostic per-axis resampling pyramid. Each level independently
-  carries its own `dimension_names` (Zarr v3) and `coords:coordinates`,
-  so pyramids can downsample non-spatial axes (time, band, …) just as
-  uniformly as spatial ones. See
+  carries its own `dimension_names` and `coords:coordinates`, so pyramids
+  can downsample non-spatial axes (time, band, …) just as uniformly as
+  spatial ones. See
   [Relationship with the `multiscales` convention](#relationship-with-the-multiscales-convention).
 
 ## Convention Registration
@@ -106,33 +108,31 @@ This convention can be used with these parts of the Zarr hierarchy:
 - [x] Array
 
 On **arrays**, `coords:coordinates` keys reference the array's own
-dimension names as declared by Zarr's `dimension_names` (v3) /
-`_ARRAY_DIMENSIONS` (v2). On **groups**, `coords:coordinates` can act as a
-group-level catalogue of coordinate descriptors shared by child arrays;
+Zarr v3 `dimension_names`. On **groups**, `coords:coordinates` can act as
+a group-level catalogue of coordinate descriptors shared by child arrays;
 keys reference dimension names used by those children.
 
-## Dimension names — relying on Zarr-native fields
+## Dimension names — relying on Zarr v3 `dimension_names`
 
 This convention deliberately does **not** introduce a new field for
-dimension names. Zarr already has one:
+dimension names. Every Zarr v3 array carries a top-level
+`dimension_names` field alongside `zarr_format`, `node_type`, `shape`,
+etc.:
 
-- **Zarr v3** — every array carries a top-level `dimension_names` field
-  alongside `zarr_format`, `node_type`, `shape`, etc. Example:
-  ```json
-  {
-    "zarr_format": 3,
-    "node_type": "array",
-    "dimension_names": ["time", "y", "x"],
-    "attributes": { /* coords:coordinates lives here */ }
-  }
-  ```
-- **Zarr v2 / Xarray** — the same role is played by the
-  `_ARRAY_DIMENSIONS` attribute (an array of strings stored under the
-  array's `.zattrs`).
+```json
+{
+  "zarr_format": 3,
+  "node_type": "array",
+  "dimension_names": ["time", "y", "x"],
+  "attributes": { /* coords:coordinates lives here */ }
+}
+```
 
-All `coords:coordinates` map keys MUST resolve to entries in whichever of
-these the array uses. Tuple keys for multi-D coordinates (e.g. `"y,x"` for
+All `coords:coordinates` map keys MUST resolve to entries in that array's
+`dimension_names`. Tuple keys for multi-D coordinates (e.g. `"y,x"` for
 `lat(y, x)`) are comma-joined dimension names from that same source.
+
+For Zarr v2 datasets, see [Zarr v2 compatibility](#zarr-v2-compatibility).
 
 ## Properties
 
@@ -141,7 +141,7 @@ All properties use the `coords:` namespace prefix and are placed at the root
 
 | Field Name           | Type    | Required                | Description |
 |----------------------|---------|-------------------------|-------------|
-| `coords:coordinates` | `object` | Optional               | Map from dimension name (or comma-joined tuple for multi-D coordinates) to a [coordinate descriptor](#coordinate-descriptors). Keys reference Zarr-native dimension names — see [Dimension names](#dimension-names--relying-on-zarr-native-fields). |
+| `coords:coordinates` | `object` | Optional               | Map from dimension name (or comma-joined tuple for multi-D coordinates) to a [coordinate descriptor](#coordinate-descriptors). Keys reference Zarr v3 `dimension_names` — see [Dimension names](#dimension-names--relying-on-zarr-v3-dimension_names). |
 | `coords:version`     | `integer` | Optional              | Major version pin (currently `1`). Optional because `schema_url` already pins the major. |
 
 ### Additional Properties
@@ -156,9 +156,8 @@ multi-dimensional coordinates such as `lat(y, x)` (`"y,x"`) — to a
 
 - **Type**: object (map)
 - **Required**: no
-- **Keys**: dimension name from the array's `dimension_names` (Zarr v3) or
-  `_ARRAY_DIMENSIONS` (Zarr v2 / Xarray), or a comma-joined tuple like
-  `"y,x"` for curvilinear / multi-D coordinates.
+- **Keys**: dimension name from the array's Zarr v3 `dimension_names`, or
+  a comma-joined tuple like `"y,x"` for curvilinear / multi-D coordinates.
 - **Values**: a [Coordinate descriptor](#coordinate-descriptors).
 
 ### `coords:version`
@@ -171,36 +170,34 @@ pins the major.
 ## Coordinate descriptors
 
 Each value in `coords:coordinates` is one of the following shapes,
-distinguished by the `type` field.
+distinguished by the `type` field. The fields defined below are the only
+ones this convention specifies; descriptors carry `additionalProperties:
+true`, so other ecosystems can attach their own metadata without
+conflicting — see [Coordinate semantics are out of
+scope](#coordinate-semantics-are-out-of-scope).
 
-### `type: "array"` — explicit coordinate array (CF / Xarray model)
+### `type: "array"` — explicit coordinate array
 
 ```json
 {
   "type": "array",
-  "path": "../time",
-  "standard_name": "time",
-  "units": "seconds since 2020-01-01",
-  "axis": "T"
+  "path": "../time"
 }
 ```
 
 - `path` is a **Zarr-relative path** to a sibling array holding the
   coordinate values.
 - Multi-dimensional coordinate arrays (`lat(y, x)`, swath geometries) are
-  supported: the target array's own `coords:dimensions` declares its shape,
-  and the map key in the parent's `coords:coordinates` is a comma-joined
-  tuple (e.g. `"y,x"`).
-- CF metadata (`standard_name`, `long_name`, `units`, `axis`) is
-  pass-through.
+  supported: the target array's own Zarr v3 `dimension_names` declares its
+  shape, and the map key in the parent's `coords:coordinates` is a
+  comma-joined tuple (e.g. `"y,x"`).
 
 ### `type: "affine"` — delegate to the `spatial` convention
 
 ```json
 {
   "type": "affine",
-  "convention": "spatial",
-  "axis": "X"
+  "convention": "spatial"
 }
 ```
 
@@ -214,8 +211,7 @@ you only need to map a generic dimension name to it.
 ```json
 {
   "type": "reference",
-  "convention": "proj",
-  "standard_name": "projection_y_coordinate"
+  "convention": "proj"
 }
 ```
 
@@ -229,9 +225,7 @@ expanding this convention.
 ```json
 {
   "type": "inline",
-  "values": [0.490, 0.560, 0.665, 0.842],
-  "units": "micrometre",
-  "axis": "spectral"
+  "values": [0.490, 0.560, 0.665, 0.842]
 }
 ```
 
@@ -239,6 +233,46 @@ Embeds the coordinate values directly in the metadata. Intended for short
 auxiliary axes (e.g. a 4-band spectral axis) where allocating a separate
 Zarr array would be wasteful. Keep these small — readers MAY refuse to
 interpret very large inline arrays.
+
+## Coordinate semantics are out of scope
+
+This convention is deliberately limited to *locating* coordinates. It does
+**not** define how to describe their *semantics* — units of measure,
+calendar, axis role, standard name, etc. Those concerns belong to other
+specifications:
+
+- The [CF conventions](https://cfconventions.org/) define
+  `standard_name`, `long_name`, `units`, `axis`, `calendar`,
+  `grid_mapping`, and related metadata.
+- A future dedicated **`cf:`** Zarr convention may formalize a CF-aligned
+  attribute namespace for use alongside `coords:`. Until such a convention
+  exists, CF-style fields MAY appear directly inside a coordinate
+  descriptor — descriptors are `additionalProperties: true`, so readers
+  that understand CF can pick them up while `coords:` validators ignore
+  them.
+
+### Example — CF metadata carried alongside a `type: "array"` descriptor
+
+This is the only example in this spec that includes CF fields. It is shown
+to illustrate the future composition path; the underlined fields below are
+**not** defined by `coords:` and are passed through verbatim:
+
+```json
+{
+  "type": "array",
+  "path": "../time",
+  "standard_name": "time",
+  "long_name": "observation time",
+  "units": "seconds since 2020-01-01",
+  "axis": "T",
+  "calendar": "proleptic_gregorian"
+}
+```
+
+A future `cf:` convention would register the CF vocabulary explicitly
+(via its own `schema_url` in `zarr_conventions`) and validate these
+fields. For now, treat them as opportunistic interop metadata rather than
+part of `coords:`.
 
 ## Relationship with the `spatial` convention
 
@@ -254,7 +288,7 @@ This convention is intentionally **broader** than `spatial`:
 The two compose cleanly:
 
 1. **Routing an existing affine grid.** A dataset already using
-   `spatial:transform` and Zarr v3 `dimension_names: ["y", "x"]` can adopt
+   `spatial:transform` with `dimension_names: ["y", "x"]` can adopt
    `coords:` to reuse the affine transform via
    `coords:coordinates: {"y": {"type": "affine", "convention": "spatial"},
    "x": {"type": "affine", "convention": "spatial"}}`.
@@ -291,7 +325,7 @@ spectral, vertical, or domain-specific — not only spatial ones.
 `coords:` slots in cleanly because each multiscales level *is its own
 Zarr array (or group) node*, so each level independently carries:
 
-- its Zarr-native `dimension_names` (v3) / `_ARRAY_DIMENSIONS` (v2), and
+- its Zarr v3 `dimension_names`, and
 - its own `coords:coordinates` map.
 
 Readers therefore route each level's axes through `coords:` exactly as
@@ -435,6 +469,45 @@ This convention follows the **integer-major with URL pin** contract
 - Readers SHOULD tolerate unknown `type` values in coordinate descriptors
   and unknown additional fields per the conventions framework's
   safely-ignorable principle.
+
+## Zarr v2 compatibility
+
+This convention is specified against Zarr v3. Zarr v2 datasets can use it
+with two adaptations, both already established in the Zarr / Xarray
+ecosystem:
+
+1. **Dimension names live in attributes, not at the top level.** Zarr v2
+   has no `dimension_names` field. The de-facto equivalent — established
+   by Xarray — is the `_ARRAY_DIMENSIONS` attribute on each array, an
+   ordered list of strings stored under `.zattrs`. Implementations
+   consuming `coords:` on a Zarr v2 array MUST treat `_ARRAY_DIMENSIONS`
+   as the source of dimension names that `coords:coordinates` keys
+   reference.
+
+2. **Convention metadata location is unchanged.** The `zarr_conventions`
+   registration array and the `coords:coordinates` / `coords:version`
+   fields live in the same attribute location as in v3 (i.e. under
+   `.zattrs` rather than under the `attributes` key of a v3 array's
+   metadata document).
+
+Side-by-side:
+
+| Concept              | Zarr v3                                              | Zarr v2 (with Xarray convention)                |
+|----------------------|------------------------------------------------------|-------------------------------------------------|
+| Dimension names      | Top-level `dimension_names` field on array metadata  | `_ARRAY_DIMENSIONS` attribute in `.zattrs`      |
+| Convention registry  | `attributes.zarr_conventions`                        | `.zattrs.zarr_conventions`                      |
+| `coords:coordinates` | `attributes["coords:coordinates"]`                   | `.zattrs["coords:coordinates"]`                 |
+| Descriptor `path`    | Zarr-relative path to a sibling array                | Same                                            |
+| Multi-D tuple keys   | Comma-joined names from `dimension_names`            | Comma-joined names from `_ARRAY_DIMENSIONS`     |
+
+Everything else in this specification — the four descriptor `type` values,
+the composition with `spatial` / `proj` / `multiscales`, the
+out-of-scope status of CF semantics — applies unchanged to Zarr v2.
+
+The JSON Schema in this repository validates Zarr v3 metadata documents.
+Validating Zarr v2 datasets is left to v2-aware tooling: a v2 validator
+would synthesize an equivalent document from the v2 array's `.zarray` and
+`.zattrs` files and then apply the same schema.
 
 ## Acknowledgements
 

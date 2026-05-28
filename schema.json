@@ -82,17 +82,13 @@
             "oneOf": [
               {
                 "type": "object",
-                "description": "Explicit coordinate array (CF/Xarray model). Points to a sibling Zarr array via Zarr-relative path.",
+                "description": "Explicit coordinate array. Points to a sibling Zarr array via a Zarr-relative path. Coordinate semantics (e.g. CF standard_name, units, axis) are not defined by this convention and MAY appear as additional properties; a future 'cf:' convention may formalize them.",
                 "properties": {
                   "type": { "const": "array" },
                   "path": {
                     "type": "string",
                     "description": "Zarr-relative path to the coordinate array."
-                  },
-                  "standard_name": { "type": "string" },
-                  "long_name": { "type": "string" },
-                  "units": { "type": "string" },
-                  "axis": { "type": "string" }
+                  }
                 },
                 "required": ["type", "path"],
                 "additionalProperties": true
@@ -106,11 +102,7 @@
                     "type": "string",
                     "default": "spatial",
                     "description": "Name of the sibling convention providing the affine transform (defaults to 'spatial')."
-                  },
-                  "standard_name": { "type": "string" },
-                  "long_name": { "type": "string" },
-                  "units": { "type": "string" },
-                  "axis": { "type": "string" }
+                  }
                 },
                 "required": ["type"],
                 "additionalProperties": true
@@ -123,11 +115,7 @@
                   "convention": {
                     "type": "string",
                     "description": "Name of the sibling convention that defines this coordinate."
-                  },
-                  "standard_name": { "type": "string" },
-                  "long_name": { "type": "string" },
-                  "units": { "type": "string" },
-                  "axis": { "type": "string" }
+                  }
                 },
                 "required": ["type", "convention"],
                 "additionalProperties": true
@@ -140,11 +128,7 @@
                   "values": {
                     "type": "array",
                     "description": "Coordinate values."
-                  },
-                  "standard_name": { "type": "string" },
-                  "long_name": { "type": "string" },
-                  "units": { "type": "string" },
-                  "axis": { "type": "string" }
+                  }
                 },
                 "required": ["type", "values"],
                 "additionalProperties": true

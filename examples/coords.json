@@ -15,24 +15,15 @@
     "coords:coordinates": {
       "time": {
         "type": "array",
-        "path": "../time",
-        "standard_name": "time",
-        "units": "seconds since 2020-01-01",
-        "axis": "T"
+        "path": "../time"
       },
       "y": {
         "type": "affine",
-        "convention": "spatial",
-        "standard_name": "projection_y_coordinate",
-        "units": "metre",
-        "axis": "Y"
+        "convention": "spatial"
       },
       "x": {
         "type": "affine",
-        "convention": "spatial",
-        "standard_name": "projection_x_coordinate",
-        "units": "metre",
-        "axis": "X"
+        "convention": "spatial"
       }
     },
     "coords:version": 1
