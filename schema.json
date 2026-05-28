@@ -1,0 +1,165 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/zarr-conventions/coords/refs/tags/v1/schema.json",
+  "title": "Coordinates Convention (coords:)",
+  "description": "Schema for coords information in Zarr. Properties use the 'coords:' namespace prefix.",
+  "type": "object",
+  "properties": {
+    "zarr_format": {
+      "type": "integer",
+      "description": "Zarr format version"
+    },
+    "node_type": {
+      "type": "string",
+      "enum": ["array", "group"],
+      "description": "Type of Zarr node"
+    },
+    "attributes": {
+      "type": "object",
+      "description": "Zarr attributes containing convention metadata and coords: prefixed properties",
+      "properties": {
+        "zarr_conventions": {
+          "type": "array",
+          "description": "Array of convention metadata objects",
+          "contains": {
+            "$ref": "#/$defs/conventionMetadata"
+          }
+        }
+      },
+      "required": ["zarr_conventions"],
+      "$ref": "#/$defs/coordsAttributes"
+    }
+  },
+  "required": ["zarr_format", "node_type", "attributes"],
+  "additionalProperties": true,
+  "$defs": {
+    "conventionMetadata": {
+      "type": "object",
+      "description": "Coordinates convention metadata object for use in zarr_conventions array",
+      "properties": {
+        "schema_url": {
+          "type": "string",
+          "const": "https://raw.githubusercontent.com/zarr-conventions/coords/refs/tags/v1/schema.json",
+          "description": "URL to the JSON Schema definition for this convention"
+        },
+        "spec_url": {
+          "type": "string",
+          "const": "https://github.com/zarr-conventions/coords/blob/v1/README.md",
+          "description": "URL to the full specification document"
+        },
+        "uuid": {
+          "type": "string",
+          "const": "6ca4454a-658a-4348-a667-b39ced0e58cb",
+          "description": "UUID that permanently identifies this convention"
+        },
+        "name": {
+          "type": "string",
+          "const": "coords",
+          "description": "Human-readable name of the convention"
+        },
+        "description": {
+          "type": "string",
+          "const": "Generic mapping between Zarr array index space and coordinate space — declares dimensions, locates coordinate descriptors, and composes with the spatial convention for affine transforms or CF-style explicit arrays for non-spatial dimensions.",
+          "description": "Brief description of the convention's purpose and usage"
+        }
+      },
+      "anyOf": [
+        { "required": ["schema_url"] },
+        { "required": ["spec_url"] },
+        { "required": ["uuid"] }
+      ],
+      "additionalProperties": false
+    },
+    "coordsAttributes": {
+      "type": "object",
+      "description": "Coordinates properties using coords: key prefix",
+      "properties": {
+        "zarr_conventions": true,
+        "coords:coordinates": {
+          "type": "object",
+          "description": "Map from dimension name (or comma-joined tuple of dimension names for multi-dimensional coordinates such as 'y,x') to a coordinate descriptor. Dimension names are NOT redeclared here — they are taken from the Zarr v3 'dimension_names' field of the same array (or the Zarr v2 / Xarray '_ARRAY_DIMENSIONS' attribute).",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "object",
+                "description": "Explicit coordinate array (CF/Xarray model). Points to a sibling Zarr array via Zarr-relative path.",
+                "properties": {
+                  "type": { "const": "array" },
+                  "path": {
+                    "type": "string",
+                    "description": "Zarr-relative path to the coordinate array."
+                  },
+                  "standard_name": { "type": "string" },
+                  "long_name": { "type": "string" },
+                  "units": { "type": "string" },
+                  "axis": { "type": "string" }
+                },
+                "required": ["type", "path"],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "description": "Affine spatial coordinate, delegating to the spatial convention's transform on the same node or an ancestor group.",
+                "properties": {
+                  "type": { "const": "affine" },
+                  "convention": {
+                    "type": "string",
+                    "default": "spatial",
+                    "description": "Name of the sibling convention providing the affine transform (defaults to 'spatial')."
+                  },
+                  "standard_name": { "type": "string" },
+                  "long_name": { "type": "string" },
+                  "units": { "type": "string" },
+                  "axis": { "type": "string" }
+                },
+                "required": ["type"],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "description": "Reference to another named convention (temporal, vertical, spectral, lookup, or future domain-specific) that defines this coordinate's semantics.",
+                "properties": {
+                  "type": { "const": "reference" },
+                  "convention": {
+                    "type": "string",
+                    "description": "Name of the sibling convention that defines this coordinate."
+                  },
+                  "standard_name": { "type": "string" },
+                  "long_name": { "type": "string" },
+                  "units": { "type": "string" },
+                  "axis": { "type": "string" }
+                },
+                "required": ["type", "convention"],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "description": "Inline coordinate values, embedded directly. Intended for short auxiliary axes (e.g. a small band/spectral axis) where allocating a separate Zarr array would be wasteful.",
+                "properties": {
+                  "type": { "const": "inline" },
+                  "values": {
+                    "type": "array",
+                    "description": "Coordinate values."
+                  },
+                  "standard_name": { "type": "string" },
+                  "long_name": { "type": "string" },
+                  "units": { "type": "string" },
+                  "axis": { "type": "string" }
+                },
+                "required": ["type", "values"],
+                "additionalProperties": true
+              }
+            ]
+          }
+        },
+        "coords:version": {
+          "type": "integer",
+          "const": 1,
+          "description": "Major version of the coords convention this metadata was authored against."
+        }
+      },
+      "required": [],
+      "additionalProperties": true
+    }
+  }
+}

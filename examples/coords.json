@@ -1,0 +1,40 @@
+{
+  "zarr_format": 3,
+  "node_type": "array",
+  "dimension_names": ["time", "y", "x"],
+  "attributes": {
+    "zarr_conventions": [
+      {
+        "schema_url": "https://raw.githubusercontent.com/zarr-conventions/coords/refs/tags/v1/schema.json",
+        "spec_url": "https://github.com/zarr-conventions/coords/blob/v1/README.md",
+        "uuid": "6ca4454a-658a-4348-a667-b39ced0e58cb",
+        "name": "coords",
+        "description": "Generic mapping between Zarr array index space and coordinate space — declares dimensions, locates coordinate descriptors, and composes with the spatial convention for affine transforms or CF-style explicit arrays for non-spatial dimensions."
+      }
+    ],
+    "coords:coordinates": {
+      "time": {
+        "type": "array",
+        "path": "../time",
+        "standard_name": "time",
+        "units": "seconds since 2020-01-01",
+        "axis": "T"
+      },
+      "y": {
+        "type": "affine",
+        "convention": "spatial",
+        "standard_name": "projection_y_coordinate",
+        "units": "metre",
+        "axis": "Y"
+      },
+      "x": {
+        "type": "affine",
+        "convention": "spatial",
+        "standard_name": "projection_x_coordinate",
+        "units": "metre",
+        "axis": "X"
+      }
+    },
+    "coords:version": 1
+  }
+}
