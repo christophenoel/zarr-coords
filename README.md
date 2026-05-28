@@ -20,16 +20,6 @@ This convention provides a single, generic mechanism to associate each
 coordinates) with a **coordinate descriptor** that says *how* the
 coordinate values are represented and *where* they live.
 
-This specification is written against **Zarr v3**. Dimension *names* are
-**not** redeclared by this convention — they are taken from the Zarr v3
-array's `dimension_names` field (top-level array metadata, sibling of
-`zarr_format` and `node_type`). `coords:coordinates` keys MUST match those
-existing names.
-
-Zarr v2 datasets can use this convention with a small adaptation — see
-[Zarr v2 compatibility](#zarr-v2-compatibility) at the end of this
-document.
-
 It deliberately does not invent a new coordinate model. Instead it offers a
 small set of descriptor shapes that cover the dominant ecosystems:
 
@@ -38,7 +28,7 @@ small set of descriptor shapes that cover the dominant ecosystems:
 - **Affine spatial transforms** (the GeoTIFF / GDAL model, as already
   captured by the [`spatial`](https://github.com/zarr-conventions/zarr-spatial)
   convention).
-- **References to other conventions** for temporal, vertical, spectral,
+- **References to future conventions** for temporal, vertical, spectral,
   lookup-based, or other domain-specific coordinate types — without
   enlarging this spec.
 
