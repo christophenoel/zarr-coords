@@ -308,6 +308,35 @@ Unit and calendar semantics (e.g. CF `units`, `calendar` for the numeric
 form; calendar choice for the ISO 8601 form) remain out of scope — see
 [Coordinate semantics are out of scope](#coordinate-semantics-are-out-of-scope).
 
+### Putting it together
+
+A complete array node: the Zarr v3 `dimension_names` declare the axes, and
+`coords:coordinates` routes each one to a descriptor — here an explicit
+`time` array alongside `y` / `x` axes delegated to the `spatial` convention.
+
+```json
+{
+  "zarr_format": 3,
+  "node_type": "array",
+  "dimension_names": ["time", "y", "x"],
+  "attributes": {
+    "zarr_conventions": [
+      { "name": "coords", "schema_url": "https://raw.githubusercontent.com/zarr-conventions/coords/refs/tags/v1/schema.json" }
+    ],
+    "coords:coordinates": {
+      "time": { "type": "array",  "path": "../time" },
+      "y":    { "type": "affine", "convention": "spatial" },
+      "x":    { "type": "affine", "convention": "spatial" }
+    },
+    "coords:version": 1
+  }
+}
+```
+
+This is [examples/coords.json](examples/coords.json) (shown there with the
+full `zarr_conventions` registration block). For the implicit regularly
+spaced form, see [examples/coords-interval.json](examples/coords-interval.json).
+
 ## Coordinate semantics are out of scope
 
 This convention is deliberately limited to *locating* coordinates. It does
