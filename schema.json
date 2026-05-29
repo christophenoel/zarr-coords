@@ -132,6 +132,45 @@
                 },
                 "required": ["type", "values"],
                 "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "description": "Implicit regularly spaced sequence. Equivalent to enumerating start, start+step, ..., end (end inclusive). Two value domains: numeric (start/end/step all JSON numbers) or ISO 8601 (start/end are date-time strings and step is an ISO 8601 duration like 'P1D').",
+                "properties": {
+                  "type": { "const": "interval" },
+                  "start": {
+                    "type": ["number", "string"],
+                    "description": "First value of the sequence. Number for the numeric form; ISO 8601 date-time string for the temporal form."
+                  },
+                  "end": {
+                    "type": ["number", "string"],
+                    "description": "Last value of the sequence (inclusive). Same JSON type as 'start'."
+                  },
+                  "step": {
+                    "type": ["number", "string"],
+                    "description": "Increment between successive values. Number for the numeric form (non-zero; may be negative); ISO 8601 duration string for the temporal form (e.g. 'P1D', 'PT1H')."
+                  }
+                },
+                "required": ["type", "start", "end", "step"],
+                "oneOf": [
+                  {
+                    "description": "Numeric interval.",
+                    "properties": {
+                      "start": { "type": "number" },
+                      "end":   { "type": "number" },
+                      "step":  { "type": "number", "not": { "const": 0 } }
+                    }
+                  },
+                  {
+                    "description": "ISO 8601 temporal interval. 'start' / 'end' are ISO 8601 date-time strings; 'step' is an ISO 8601 duration (starts with 'P').",
+                    "properties": {
+                      "start": { "type": "string" },
+                      "end":   { "type": "string" },
+                      "step":  { "type": "string", "pattern": "^P" }
+                    }
+                  }
+                ],
+                "additionalProperties": true
               }
             ]
           }

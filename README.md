@@ -29,6 +29,10 @@ small set of descriptor shapes:
 - **Inline coordinate values** — short value vectors embedded directly in
   the metadata (for example, a 4-band spectral axis where allocating a
   separate array would be wasteful).
+- **Implicit regularly spaced values** — a compact `start` / `end` / `step`
+  descriptor for axes that are uniformly spaced, covering both numeric
+  domains (angles, distances, frequencies, levels) and ISO 8601 time
+  intervals, without enumerating every value.
 - **Delegation via composition** — for coordinate kinds that have their
   own Zarr convention, the descriptor delegates to it via a generic
   `reference` descriptor instead of carrying the values. Future conventions
@@ -239,6 +243,70 @@ Embeds the coordinate values directly in the metadata. Intended for short
 auxiliary axes (e.g. a 4-band spectral axis) where allocating a separate
 Zarr array would be wasteful. Keep these small — readers MAY refuse to
 interpret very large inline arrays.
+
+### `type: "interval"` — implicit regularly spaced values
+
+```json
+{
+  "type": "interval",
+  "start": 0,
+  "end": 10,
+  "step": 2
+}
+```
+
+→ `0, 2, 4, 6, 8, 10`
+
+A compact descriptor for axes whose coordinate values form a regularly
+spaced sequence. Equivalent to an `inline` descriptor enumerating
+`start, start + step, ..., end`, but avoids materializing the values.
+
+- `start` is the first value of the sequence.
+- `end` is **inclusive**: the last value of the sequence reaches `end`
+  exactly when `(end − start)` is an integer multiple of `step`. Authors
+  SHOULD ensure this; readers MAY ignore any residual fraction.
+- `step` is the increment between successive values. It MUST be non-zero;
+  it MAY be negative for descending sequences.
+
+Two value domains are supported, distinguished by JSON type:
+
+**Numeric** — `start`, `end`, `step` are all JSON numbers. Applicable to
+any ordered numeric axis: integers, floating-point values, angles,
+distances, frequencies, elevations, levels:
+
+```json
+{ "type": "interval", "start": 1.0, "end": 2.0, "step": 0.25 }
+```
+
+→ `1.0, 1.25, 1.5, 1.75, 2.0`
+
+```json
+{ "type": "interval", "start": 0, "end": 360, "step": 15 }
+```
+
+→ `0°, 15°, 30°, …, 360°`
+
+**ISO 8601 (temporal)** — `start` and `end` are ISO 8601 date-time
+strings; `step` is an ISO 8601 duration (e.g. `P1D`, `PT1H`, `P1M`).
+This is the temporal equivalent of the numeric form, standardized by
+ISO 8601:
+
+```json
+{
+  "type": "interval",
+  "start": "2026-01-01T00:00:00Z",
+  "end":   "2026-01-31T00:00:00Z",
+  "step":  "P1D"
+}
+```
+
+Conceptually equivalent to the ISO 8601 interval notation
+`2026-01-01T00:00:00Z/2026-01-31T00:00:00Z/P1D`, but kept as three
+discrete fields so readers do not need to parse a compound string.
+
+Unit and calendar semantics (e.g. CF `units`, `calendar` for the numeric
+form; calendar choice for the ISO 8601 form) remain out of scope — see
+[Coordinate semantics are out of scope](#coordinate-semantics-are-out-of-scope).
 
 ## Coordinate semantics are out of scope
 
@@ -471,6 +539,9 @@ metadata examples:
 - [examples/coords.json](examples/coords.json) — minimal example mixing an
   explicit time coordinate array with affine `y`/`x` axes delegated to the
   `spatial` convention.
+- [examples/coords-interval.json](examples/coords-interval.json) — implicit
+  axes using `type: "interval"`: an ISO 8601 daily time interval plus
+  numeric elevation and azimuth axes.
 
 ## Versioning and Compatibility
 
@@ -518,7 +589,7 @@ Side-by-side:
 | Descriptor `path`    | Zarr-relative path to a sibling array                | Same                                            |
 | Multi-D tuple keys   | Comma-joined names from `dimension_names`            | Comma-joined names from `_ARRAY_DIMENSIONS`     |
 
-Everything else in this specification — the four descriptor `type` values,
+Everything else in this specification — the five descriptor `type` values,
 the composition with `spatial` / `proj` / `multiscales`, the
 out-of-scope status of CF semantics — applies unchanged to Zarr v2.
 
