@@ -1,5 +1,9 @@
 # Coordinates Convention
 
+> 📖 New to this convention? Start with the
+> [introduction to the `coords` convention](https://medium.com/@christophe.noel/zarr-coords-convention-65036eeab7b4)
+> for the motivation and a guided walkthrough.
+
 - **UUID**: 6ca4454a-658a-4348-a667-b39ced0e58cb
 - **Name**: "coords"
 - **Namespace**: `coords:`
@@ -43,7 +47,7 @@ small set of descriptor shapes:
   model, sometimes paired with `grid_mapping` — use the `array` descriptor
   above; an affine geotransform on a regular grid — the GeoTIFF / GDAL
   model — uses an `affine` descriptor that delegates to the
-  [`spatial`](https://github.com/zarr-conventions/zarr-spatial) convention.
+  [`spatial`](https://github.com/zarr-conventions/spatial) convention.
 
 All properties use the `coords:` namespace prefix and are placed at the root
 `attributes` level following the [Zarr Conventions Specification](https://github.com/zarr-conventions/zarr-conventions-spec).
@@ -60,11 +64,11 @@ All properties use the `coords:` namespace prefix and are placed at the root
     is out of scope here and may be formalized by a future `cf:`
     convention.
   - **GeoTIFF / GDAL / GeoZarr** — affine geotransform expressed by the
-    [`spatial`](https://github.com/zarr-conventions/zarr-spatial)
+    [`spatial`](https://github.com/zarr-conventions/spatial)
     convention.
-- Composable with [`spatial`](https://github.com/zarr-conventions/zarr-spatial)
+- Composable with [`spatial`](https://github.com/zarr-conventions/spatial)
   (affine georeferencing),
-  [`proj`](https://github.com/zarr-conventions/zarr-proj) (CRS),
+  [`proj`](https://github.com/zarr-conventions/proj) (CRS),
   and [`multiscales`](https://github.com/zarr-conventions/multiscales)
   (each level can independently declare its own coordinates).
 - Uses **integer-major + URL pin** versioning: the `schema_url` carries the
@@ -72,14 +76,14 @@ All properties use the `coords:` namespace prefix and are placed at the root
 
 ### Composes with
 
-- **[`spatial`](https://github.com/zarr-conventions/zarr-spatial)** — when a
+- **[`spatial`](https://github.com/zarr-conventions/spatial)** — when a
   spatial axis is represented by an affine geotransform (the GeoTIFF / GDAL
   model), declare it with `{type: "affine", convention: "spatial"}` and let
   the existing `spatial:transform` attribute carry the matrix. Spatial axes
   represented as explicit `lat` / `lon` (or projected-`x` / projected-`y`)
   arrays — the NetCDF / CF model, sometimes paired with `grid_mapping` —
   use the `array` descriptor instead.
-- **[`proj`](https://github.com/zarr-conventions/zarr-proj)** — provides the
+- **[`proj`](https://github.com/zarr-conventions/proj)** — provides the
   CRS for spatial axes; orthogonal to `coords:`, applied on the same node.
 - **[`multiscales`](https://github.com/zarr-conventions/multiscales)** —
   domain-agnostic per-axis resampling pyramid. Each level independently
@@ -211,7 +215,7 @@ Indicates that the spatial coordinate is derived from the
 `spatial:transform` affine matrix declared on the same node (or an
 ancestor group) — the GeoTIFF / GDAL representation of spatial coordinates.
 Use this when georeferencing is already expressed via the
-[`spatial`](https://github.com/zarr-conventions/zarr-spatial) convention
+[`spatial`](https://github.com/zarr-conventions/spatial) convention
 and you only need to map a generic dimension name to it. For the NetCDF /
 CF tradition (explicit `lat` / `lon` or projected `x` / `y` arrays, often
 with a CF `grid_mapping` attribute), use the `array` descriptor instead.
@@ -384,7 +388,7 @@ ecosystem:
 
 - **GeoTIFF / GDAL** — an affine geotransform on a regular grid (origin +
   cell size + CRS hook). This is what the
-  [`spatial`](https://github.com/zarr-conventions/zarr-spatial) convention
+  [`spatial`](https://github.com/zarr-conventions/spatial) convention
   captures, and what an `affine` descriptor in `coords:coordinates`
   delegates to.
 - **NetCDF / CF / Xarray** — explicit `lat` / `lon` (or projected `x` /
@@ -394,7 +398,7 @@ ecosystem:
 
 This convention is intentionally **broader** than `spatial`:
 
-- [`spatial`](https://github.com/zarr-conventions/zarr-spatial) describes
+- [`spatial`](https://github.com/zarr-conventions/spatial) describes
   the GeoTIFF / GDAL affine model for the spatial dimensions of a grid.
 - `coords:` describes *any* dimension — temporal, vertical, spectral,
   categorical, spatial, or domain-specific — and how to find its
@@ -633,5 +637,6 @@ The template is based on the [STAC extensions template](https://github.com/stac-
 
 Coordinate-array semantics are inspired by the
 [CF conventions](https://cfconventions.org/) and the Xarray data model.
-The affine spatial composition path mirrors the
-[Zarr `spatial` convention](https://github.com/zarr-conventions/zarr-spatial).
+The affine spatial composition path delegates to the
+[Zarr `spatial` convention](https://github.com/zarr-conventions/spatial)
+via the `affine` descriptor.
