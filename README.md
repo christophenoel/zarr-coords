@@ -118,9 +118,11 @@ This convention can be used with these parts of the Zarr hierarchy:
 - [x] Array
 
 On **arrays**, `coords:coordinates` keys reference the array's own
-Zarr v3 `dimension_names`. On **groups**, `coords:coordinates` can act as
-a group-level catalogue of coordinate descriptors shared by child arrays;
-keys reference dimension names used by those children.
+Zarr v3 `dimension_names` (or, for auxiliary coordinates, name a coordinate
+that `indexed_by` ties to those dimensions). On **groups**,
+`coords:coordinates` can act as a group-level catalogue of coordinate
+descriptors shared by child arrays; keys reference dimension names used by
+those children.
 
 ## Dimension names — relying on Zarr v3 `dimension_names`
 
@@ -138,9 +140,11 @@ etc.:
 }
 ```
 
-All `coords:coordinates` map keys MUST resolve to entries in that array's
-`dimension_names`. Tuple keys for multi-D coordinates (e.g. `"y,x"` for
-`lat(y, x)`) are comma-joined dimension names from that same source.
+By default, each `coords:coordinates` map key MUST resolve to an entry in
+that array's `dimension_names` — it names the dimension whose coordinate
+values the descriptor supplies (a 1-D *coordinate variable*, in CF terms).
+The one exception is an auxiliary coordinate declared with
+[`indexed_by`](#auxiliary-and-multi-dimensional-coordinates-indexed_by).
 
 For Zarr v2 datasets, see [Zarr v2 compatibility](#zarr-v2-compatibility).
 
@@ -151,7 +155,7 @@ All properties use the `coords:` namespace prefix and are placed at the root
 
 | Field Name           | Type    | Required                | Description |
 |----------------------|---------|-------------------------|-------------|
-| `coords:coordinates` | `object` | Optional               | Map from dimension name (or comma-joined tuple for multi-D coordinates) to a [coordinate descriptor](#coordinate-descriptors). Keys reference Zarr v3 `dimension_names` — see [Dimension names](#dimension-names--relying-on-zarr-v3-dimension_names). |
+| `coords:coordinates` | `object` | **Required**           | Map from a coordinate key to a [coordinate descriptor](#coordinate-descriptors). Keys are dimension names from Zarr v3 `dimension_names` — except for auxiliary coordinates declared with [`indexed_by`](#auxiliary-and-multi-dimensional-coordinates-indexed_by), where the key is a coordinate name you choose. See [Dimension names](#dimension-names--relying-on-zarr-v3-dimension_names). |
 | `coords:version`     | `integer` | Optional              | Major version pin (currently `1`). Optional because `schema_url` already pins the major. |
 
 ### Additional Properties
@@ -160,15 +164,27 @@ Additional properties are allowed.
 
 ### `coords:coordinates`
 
-Map from a dimension name — or a comma-joined tuple of dimension names for
-multi-dimensional coordinates such as `lat(y, x)` (`"y,x"`) — to a
-**coordinate descriptor**.
+Map from a coordinate **key** to a **coordinate descriptor**.
 
 - **Type**: object (map)
-- **Required**: no
-- **Keys**: dimension name from the array's Zarr v3 `dimension_names`, or
-  a comma-joined tuple like `"y,x"` for curvilinear / multi-D coordinates.
+- **Required**: yes — a node that registers this convention MUST carry a
+  `coords:coordinates` map.
+- **Keys**: a **dimension name** from the array's Zarr v3 `dimension_names`.
+  The sole exception is an auxiliary coordinate keyed by its own name — see
+  [`indexed_by`](#auxiliary-and-multi-dimensional-coordinates-indexed_by).
 - **Values**: a [Coordinate descriptor](#coordinate-descriptors).
+
+The keys alone — independent of the descriptor `type`, omitted here for
+clarity — look like this for an array with
+`dimension_names: ["time", "y", "x"]`:
+
+```jsonc
+"coords:coordinates": {
+  "time": { … },   // key = dimension name
+  "y":    { … },   // key = dimension name
+  "x":    { … }    // key = dimension name
+}
+```
 
 ### `coords:version`
 
@@ -197,10 +213,49 @@ scope](#coordinate-semantics-are-out-of-scope).
 
 - `path` is a **Zarr-relative path** to a sibling array holding the
   coordinate values.
-- Multi-dimensional coordinate arrays (`lat(y, x)`, swath geometries) are
-  supported: the target array's own Zarr v3 `dimension_names` declares its
-  shape, and the map key in the parent's `coords:coordinates` is a
-  comma-joined tuple (e.g. `"y,x"`).
+- The map key is the **dimension name** this coordinate belongs to, and the
+  target array is 1-D along that dimension (a CF coordinate variable).
+- For coordinates that vary along a *different* dimension, or along more than
+  one dimension, add [`indexed_by`](#auxiliary-and-multi-dimensional-coordinates-indexed_by)
+  and key the entry by the coordinate's own name.
+
+#### Auxiliary and multi-dimensional coordinates (`indexed_by`)
+
+`indexed_by` declares the dimension or dimensions on which a coordinate array
+depends. Use it when a coordinate is *associated with* a dimension rather than
+*representing* that dimension itself — so the map key is the coordinate's name
+(e.g. `lat`), not a dimension name.
+
+This is the CF **auxiliary coordinate** model. It covers point observations,
+trajectories, profiles, stations, and curvilinear grids — where coordinates
+like `lat`, `lon`, or `time` vary along some other dimension (`sample`,
+`station`, …) or along several dimensions at once (`y`, `x`).
+
+```json
+{
+  "type": "array",
+  "indexed_by": ["sample"],
+  "path": "../lat"
+}
+```
+
+Keyed as `lat` in `coords:coordinates`, this describes a latitude coordinate
+array whose values are indexed by the `sample` dimension:
+
+```text
+lat(sample)
+```
+
+Two or more dimensions give a multi-dimensional / curvilinear coordinate —
+e.g. `indexed_by: ["y", "x"]` for `lat(y, x)`. Each name in `indexed_by` MUST
+be one of the array's `dimension_names`, and the referenced coordinate array's
+own `dimension_names` MUST match `indexed_by` in order. Because the entry is
+keyed by the coordinate name, several auxiliary coordinates can share the same
+dimensions (`lat(y, x)` *and* `lon(y, x)`) without colliding.
+
+> **In short:** an explicit coordinate array indexed by one or more
+> dimensions — for auxiliary coordinates such as `lat(sample)`,
+> `lon(sample)`, `time(sample)`, or `lat(y, x)`.
 
 ### `type: "affine"` — delegate to the `spatial` convention
 
@@ -416,9 +471,10 @@ The two compose cleanly:
    `x` axes delegated to the `spatial` convention's affine transform — all
    declared uniformly inside one `coords:coordinates` map.
 3. **Irregular / curvilinear / swath data.** When the affine model does
-   not apply, declare the spatial axes via `type: "array"` with paths to
-   2-D `lat(y, x)` / `lon(y, x)` arrays. The `spatial` convention is
-   simply not used in that case.
+   not apply, declare the spatial coordinates as auxiliary `type: "array"`
+   descriptors keyed by name (`lat`, `lon`) with `indexed_by: ["y", "x"]`
+   pointing at 2-D `lat(y, x)` / `lon(y, x)` arrays. The `spatial`
+   convention is simply not used in that case.
 4. **Future coordinate families.** Temporal, vertical, spectral, lookup,
    or domain-specific coordinate types can plug in either by extending the
    `type` enum in a future major version of this convention, or by adding
@@ -460,7 +516,7 @@ inside `coords:coordinates` are level-local — typically each level has its
 own coordinate arrays sized to that level.
 
 ```text
-my_cube/                    # group: zarr_conventions = [multiscales, coords]
+my_cube/                    # group: zarr_conventions = [multiscales]
 ├── 0/                      # native resolution
 │   ├── data                # array: dimension_names=[time,y,x], coords:coordinates={...}
 │   ├── time                # array: 1-D time coordinate at native step
@@ -488,8 +544,7 @@ Group node (`my_cube/zarr.json`):
   "node_type": "group",
   "attributes": {
     "zarr_conventions": [
-      { "name": "multiscales", "schema_url": "https://raw.githubusercontent.com/zarr-conventions/multiscales/refs/tags/v1/schema.json" },
-      { "name": "coords",      "schema_url": "https://raw.githubusercontent.com/zarr-conventions/coords/refs/tags/v1/schema.json" }
+      { "name": "multiscales", "schema_url": "https://raw.githubusercontent.com/zarr-conventions/multiscales/refs/tags/v1/schema.json" }
     ],
     "multiscales": {
       "layout": [
@@ -575,6 +630,12 @@ metadata examples:
 - [examples/coords-interval.json](examples/coords-interval.json) — implicit
   axes using `type: "interval"`: an ISO 8601 daily time interval plus
   numeric elevation and azimuth axes.
+- [examples/coords-point-cloud.json](examples/coords-point-cloud.json) —
+  auxiliary coordinates over a `sample` index dimension (`lat(sample)`,
+  `lon(sample)`, `time(sample)`) using `type: "array"` with `indexed_by`.
+- [examples/coords-curvilinear.json](examples/coords-curvilinear.json) —
+  multi-dimensional coordinates `lat(y, x)` / `lon(y, x)` on a curvilinear
+  grid, each keyed by name with `indexed_by: ["y", "x"]`.
 
 ## Versioning and Compatibility
 
@@ -620,7 +681,7 @@ Side-by-side:
 | Convention registry  | `attributes.zarr_conventions`                        | `.zattrs.zarr_conventions`                      |
 | `coords:coordinates` | `attributes["coords:coordinates"]`                   | `.zattrs["coords:coordinates"]`                 |
 | Descriptor `path`    | Zarr-relative path to a sibling array                | Same                                            |
-| Multi-D tuple keys   | Comma-joined names from `dimension_names`            | Comma-joined names from `_ARRAY_DIMENSIONS`     |
+| Auxiliary `indexed_by` | Dimension names from `dimension_names`             | Dimension names from `_ARRAY_DIMENSIONS`        |
 
 Everything else in this specification — the five descriptor `type` values,
 the composition with `spatial` / `proj` / `multiscales`, the

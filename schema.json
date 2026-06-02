@@ -77,7 +77,7 @@
         "zarr_conventions": true,
         "coords:coordinates": {
           "type": "object",
-          "description": "Map from dimension name (or comma-joined tuple of dimension names for multi-dimensional coordinates such as 'y,x') to a coordinate descriptor. Dimension names are NOT redeclared here — they are taken from the Zarr v3 'dimension_names' field of the same array (or the Zarr v2 / Xarray '_ARRAY_DIMENSIONS' attribute).",
+          "description": "Map from a coordinate key to a coordinate descriptor. By default the key is a dimension name taken from the Zarr v3 'dimension_names' field of the same array (or the Zarr v2 / Xarray '_ARRAY_DIMENSIONS' attribute), and the descriptor supplies the values for that dimension (a 1-D coordinate variable). The exception is an explicit coordinate array carrying 'indexed_by': there the key is a coordinate name you choose (e.g. 'lat') and 'indexed_by' lists the dimension(s) it varies along — the CF auxiliary-coordinate model, covering point clouds (lat(sample)) and multi-dimensional / curvilinear grids (lat(y,x)).",
           "additionalProperties": {
             "oneOf": [
               {
@@ -88,6 +88,12 @@
                   "path": {
                     "type": "string",
                     "description": "Zarr-relative path to the coordinate array."
+                  },
+                  "indexed_by": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "minItems": 1,
+                    "description": "Dimension(s) this coordinate array is indexed by, used when the map key is a coordinate name rather than a dimension name (CF auxiliary coordinate). Each entry MUST be a dimension name from the array's 'dimension_names'. e.g. ['sample'] for a point-cloud coordinate lat(sample), or ['y','x'] for a curvilinear coordinate lat(y,x). When omitted, the map key itself is the dimension name and the coordinate is 1-D along that dimension."
                   }
                 },
                 "required": ["type", "path"],
@@ -181,7 +187,7 @@
           "description": "Major version of the coords convention this metadata was authored against."
         }
       },
-      "required": [],
+      "required": ["coords:coordinates"],
       "additionalProperties": true
     }
   }
