@@ -18,11 +18,11 @@
         "path": "../time"
       },
       "y": {
-        "type": "affine",
+        "type": "reference",
         "convention": "spatial"
       },
       "x": {
-        "type": "affine",
+        "type": "reference",
         "convention": "spatial"
       }
     },

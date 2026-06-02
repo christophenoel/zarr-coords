@@ -46,7 +46,7 @@ small set of descriptor shapes:
   explicit `lat` / `lon` (or projected `x` / `y`) arrays — the NetCDF / CF
   model, sometimes paired with `grid_mapping` — use the `array` descriptor
   above; an affine geotransform on a regular grid — the GeoTIFF / GDAL
-  model — uses an `affine` descriptor that delegates to the
+  model — uses a `reference` descriptor delegating to the
   [`spatial`](https://github.com/zarr-conventions/spatial) convention.
 
 All properties use the `coords:` namespace prefix and are placed at the root
@@ -78,11 +78,11 @@ All properties use the `coords:` namespace prefix and are placed at the root
 
 - **[`spatial`](https://github.com/zarr-conventions/spatial)** — when a
   spatial axis is represented by an affine geotransform (the GeoTIFF / GDAL
-  model), declare it with `{type: "affine", convention: "spatial"}` and let
-  the existing `spatial:transform` attribute carry the matrix. Spatial axes
-  represented as explicit `lat` / `lon` (or projected-`x` / projected-`y`)
-  arrays — the NetCDF / CF model, sometimes paired with `grid_mapping` —
-  use the `array` descriptor instead.
+  model), declare it with `{type: "reference", convention: "spatial"}` and
+  let the existing `spatial:transform` attribute carry the matrix. Spatial
+  axes represented as explicit `lat` / `lon` (or projected-`x` /
+  projected-`y`) arrays — the NetCDF / CF model, sometimes paired with
+  `grid_mapping` — use the `array` descriptor instead.
 - **[`proj`](https://github.com/zarr-conventions/proj)** — provides the
   CRS for spatial axes; orthogonal to `coords:`, applied on the same node.
 - **[`multiscales`](https://github.com/zarr-conventions/multiscales)** —
@@ -257,37 +257,31 @@ dimensions (`lat(y, x)` *and* `lon(y, x)`) without colliding.
 > dimensions — for auxiliary coordinates such as `lat(sample)`,
 > `lon(sample)`, `time(sample)`, or `lat(y, x)`.
 
-### `type: "affine"` — delegate to the `spatial` convention
-
-```json
-{
-  "type": "affine",
-  "convention": "spatial"
-}
-```
-
-Indicates that the spatial coordinate is derived from the
-`spatial:transform` affine matrix declared on the same node (or an
-ancestor group) — the GeoTIFF / GDAL representation of spatial coordinates.
-Use this when georeferencing is already expressed via the
-[`spatial`](https://github.com/zarr-conventions/spatial) convention
-and you only need to map a generic dimension name to it. For the NetCDF /
-CF tradition (explicit `lat` / `lon` or projected `x` / `y` arrays, often
-with a CF `grid_mapping` attribute), use the `array` descriptor instead.
-
-### `type: "reference"` — delegate to another convention
+### `type: "reference"` — delegate to a sibling convention
 
 ```json
 {
   "type": "reference",
-  "convention": "proj"
+  "convention": "spatial"
 }
 ```
 
-Delegates this coordinate's semantics to a named sibling convention.
-Intended for future coordinate families — temporal calendars, vertical
-levels, spectral bands, lookup tables, or domain-specific axes — without
-expanding this convention.
+Delegates this coordinate to a named sibling convention, which supplies or
+defines its values — this descriptor carries none.
+
+The canonical case is `convention: "spatial"`, shown above: the axis is
+derived from the `spatial:transform` affine matrix declared on the same node
+(or an ancestor group) — the GeoTIFF / GDAL representation of spatial
+coordinates. Use it when georeferencing is already expressed via the
+[`spatial`](https://github.com/zarr-conventions/spatial) convention and you
+only need to map a dimension name to it. For the NetCDF / CF tradition
+(explicit `lat` / `lon` or projected `x` / `y` arrays, often with a CF
+`grid_mapping` attribute), use the `array` descriptor instead.
+
+The same mechanism plugs in future coordinate families — temporal calendars,
+vertical levels, spectral bands, lookup tables, or domain-specific axes
+(`{type: "reference", convention: "<name>"}`) — without expanding this
+convention.
 
 ### `type: "inline"` — embed small coordinate vectors
 
@@ -383,9 +377,9 @@ A complete array node: the Zarr v3 `dimension_names` declare the axes, and
       { "name": "coords", "schema_url": "https://raw.githubusercontent.com/zarr-conventions/coords/refs/tags/v1/schema.json" }
     ],
     "coords:coordinates": {
-      "time": { "type": "array",  "path": "../time" },
-      "y":    { "type": "affine", "convention": "spatial" },
-      "x":    { "type": "affine", "convention": "spatial" }
+      "time": { "type": "array",     "path": "../time" },
+      "y":    { "type": "reference", "convention": "spatial" },
+      "x":    { "type": "reference", "convention": "spatial" }
     },
     "coords:version": 1
   }
@@ -444,7 +438,7 @@ ecosystem:
 - **GeoTIFF / GDAL** — an affine geotransform on a regular grid (origin +
   cell size + CRS hook). This is what the
   [`spatial`](https://github.com/zarr-conventions/spatial) convention
-  captures, and what an `affine` descriptor in `coords:coordinates`
+  captures, and what a `reference` descriptor with `convention: "spatial"`
   delegates to.
 - **NetCDF / CF / Xarray** — explicit `lat` / `lon` (or projected `x` /
   `y`) coordinate arrays, often paired with a CF `grid_mapping` attribute.
@@ -464,8 +458,8 @@ The two compose cleanly:
 1. **Routing an existing affine grid.** A dataset already using
    `spatial:transform` with `dimension_names: ["y", "x"]` can adopt
    `coords:` to reuse the affine transform via
-   `coords:coordinates: {"y": {"type": "affine", "convention": "spatial"},
-   "x": {"type": "affine", "convention": "spatial"}}`.
+   `coords:coordinates: {"y": {"type": "reference", "convention": "spatial"},
+   "x": {"type": "reference", "convention": "spatial"}}`.
 2. **Mixed spatial + non-spatial dimensions.** A `(time, y, x)` cube can
    carry a `time` axis described as an explicit coordinate array and `y` /
    `x` axes delegated to the `spatial` convention's affine transform — all
@@ -575,8 +569,8 @@ Native-resolution level array (`my_cube/0/data/zarr.json`):
     ],
     "coords:coordinates": {
       "time": { "type": "array", "path": "../time", "standard_name": "time", "units": "days since 2020-01-01", "axis": "T" },
-      "y":    { "type": "affine", "convention": "spatial", "axis": "Y" },
-      "x":    { "type": "affine", "convention": "spatial", "axis": "X" }
+      "y":    { "type": "reference", "convention": "spatial", "axis": "Y" },
+      "x":    { "type": "reference", "convention": "spatial", "axis": "X" }
     }
   }
 }
@@ -598,8 +592,8 @@ scaling:
     ],
     "coords:coordinates": {
       "time": { "type": "array", "path": "../time", "units": "days since 2020-01-01", "axis": "T" },
-      "y":    { "type": "affine", "convention": "spatial", "axis": "Y" },
-      "x":    { "type": "affine", "convention": "spatial", "axis": "X" }
+      "y":    { "type": "reference", "convention": "spatial", "axis": "Y" },
+      "x":    { "type": "reference", "convention": "spatial", "axis": "X" }
     }
   }
 }
@@ -683,7 +677,7 @@ Side-by-side:
 | Descriptor `path`    | Zarr-relative path to a sibling array                | Same                                            |
 | Auxiliary `indexed_by` | Dimension names from `dimension_names`             | Dimension names from `_ARRAY_DIMENSIONS`        |
 
-Everything else in this specification — the five descriptor `type` values,
+Everything else in this specification — the four descriptor `type` values,
 the composition with `spatial` / `proj` / `multiscales`, the
 out-of-scope status of CF semantics — applies unchanged to Zarr v2.
 
@@ -700,4 +694,4 @@ Coordinate-array semantics are inspired by the
 [CF conventions](https://cfconventions.org/) and the Xarray data model.
 The affine spatial composition path delegates to the
 [Zarr `spatial` convention](https://github.com/zarr-conventions/spatial)
-via the `affine` descriptor.
+via a `reference` descriptor.

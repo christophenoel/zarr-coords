@@ -101,26 +101,12 @@
               },
               {
                 "type": "object",
-                "description": "Affine spatial coordinate, delegating to the spatial convention's transform on the same node or an ancestor group.",
-                "properties": {
-                  "type": { "const": "affine" },
-                  "convention": {
-                    "type": "string",
-                    "default": "spatial",
-                    "description": "Name of the sibling convention providing the affine transform (defaults to 'spatial')."
-                  }
-                },
-                "required": ["type"],
-                "additionalProperties": true
-              },
-              {
-                "type": "object",
-                "description": "Reference to another named convention (temporal, vertical, spectral, lookup, or future domain-specific) that defines this coordinate's semantics.",
+                "description": "Delegation to a named sibling convention that supplies or defines this coordinate. The canonical case is convention 'spatial', whose affine transform (spatial:transform, on the same node or an ancestor group) georeferences the axis — the GeoTIFF / GDAL model. The same mechanism covers temporal, vertical, spectral, lookup, or other future domain-specific conventions.",
                 "properties": {
                   "type": { "const": "reference" },
                   "convention": {
                     "type": "string",
-                    "description": "Name of the sibling convention that defines this coordinate."
+                    "description": "Name of the sibling convention that supplies or defines this coordinate (e.g. 'spatial' for an affine geotransform)."
                   }
                 },
                 "required": ["type", "convention"],
