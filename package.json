@@ -1,6 +1,6 @@
 {
   "type": "module",
-  "name": "coords-zarr-convention",
+  "name": "dimensions-zarr-convention",
   "version": "0.1.0",
   "scripts": {
     "test": "node test.js"

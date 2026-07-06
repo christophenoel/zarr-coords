@@ -1,0 +1,33 @@
+{
+  "zarr_format": 3,
+  "node_type": "array",
+  "dimension_names": ["time", "y", "x"],
+  "attributes": {
+    "zarr_conventions": [
+      {
+        "schema_url": "https://raw.githubusercontent.com/zarr-conventions/dimensions/refs/tags/v1/schema.json",
+        "spec_url": "https://github.com/zarr-conventions/dimensions/blob/v1/README.md",
+        "uuid": "6ca4454a-658a-4348-a667-b39ced0e58cb",
+        "name": "dimensions",
+        "description": "Domain-agnostic mapping between a Zarr array's index space (axes) and coordinate space (coordinate encoding)."
+      }
+    ],
+    "dimensions:axes": {
+      "time": {
+        "type": "temporal",
+        "coords": { "type": "array", "path": "../time" }
+      },
+      "y": {
+        "type": "spatial",
+        "axis": "y",
+        "coords": { "type": "reference", "convention": "spatial" }
+      },
+      "x": {
+        "type": "spatial",
+        "axis": "x",
+        "coords": { "type": "reference", "convention": "spatial" }
+      }
+    },
+    "dimensions:version": 1
+  }
+}
